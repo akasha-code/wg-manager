@@ -53,11 +53,24 @@ WRAP_CONTENT="#!/usr/bin/env bash
 export WG_HOME=\"${INSTALL_DIR}\"
 exec \"${INSTALL_DIR}/wg-fzf.sh\" \"\$@\"
 "
+
+# Try to install system-wide first, fallback to user directory
 if sudo -v >/dev/null 2>&1; then
-  echo "$WRAP_CONTENT" | sudo tee "$WRAPPER" >/dev/null
-  sudo chmod +x "$WRAPPER"
-  echo "$INSTALL_CMD_INSTALLED"
+  # Ensure /usr/local/bin exists
+  sudo mkdir -p /usr/local/bin 2>/dev/null || true
+  
+  if echo "$WRAP_CONTENT" | sudo tee "$WRAPPER" >/dev/null 2>&1 && sudo chmod +x "$WRAPPER" 2>/dev/null; then
+    echo "$INSTALL_CMD_INSTALLED"
+  else
+    echo "⚠️  Failed to install system-wide, installing locally..."
+    mkdir -p "$HOME/.local/bin"
+    WRAPPER="$HOME/.local/bin/wg-manager"
+    echo "$WRAP_CONTENT" > "$WRAPPER"
+    chmod +x "$WRAPPER"
+    echo "$INSTALL_CMD_LOCAL $WRAPPER"
+  fi
 else
+  # No sudo, install locally
   mkdir -p "$HOME/.local/bin"
   WRAPPER="$HOME/.local/bin/wg-manager"
   echo "$WRAP_CONTENT" > "$WRAPPER"
