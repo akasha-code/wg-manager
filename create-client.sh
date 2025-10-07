@@ -78,3 +78,12 @@ qrencode -t ANSIUTF8 < "$CONF_FILE"
 echo "✅ Peer '$DEVNAME' created at $CLIENT_DIR"
 read -rp "Restart service now? [y/N]: " yn
 [[ $yn =~ ^[Yy]$ ]] && sudo systemctl restart "wg-quick@${WG_INTERFACE}"
+
+# Open peer menu after creation
+if [[ "${WG_RETURN_TO_PEER_MENU:-1}" == "1" ]]; then
+  echo
+  echo "📋 Opening peer menu for '$DEVNAME'..."
+  sleep 1
+  export WG_PEER_NAME="$DEVNAME"
+  exec "$WG_HOME/wg-fzf.sh" --peer-menu "$DEVNAME"
+fi

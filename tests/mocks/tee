@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Minimal tee mock that redirects /etc paths into $FAKE_ROOT
+# Minimal tee mock that redirects /etc and /usr/local/bin paths into $FAKE_ROOT
 
 append=false
 files=()
@@ -25,6 +25,10 @@ for f in "${files[@]}"; do
     if [[ -n "${FAKE_ROOT:-}" ]]; then
       target="$FAKE_ROOT/${f#/}"
     fi
+  elif [[ "${f#/usr/local/bin/}" != "$f" ]]; then
+    if [[ -n "${FAKE_ROOT:-}" ]]; then
+      target="$FAKE_ROOT/${f#/}"
+    fi
   fi
   mkdir -p "$(dirname "$target")"
   if $append && [[ -f "$target" ]]; then
@@ -38,4 +42,3 @@ done
 printf "%s" "$buf"
 
 exit 0
-

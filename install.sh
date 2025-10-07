@@ -66,7 +66,10 @@ else
 fi
 
 echo
-echo "$INSTALL_LAUNCHING"
-WG_HOME="$INSTALL_DIR" ./wg-fzf.sh --first-run
-echo
+if [[ "${WG_INSTALL_NO_WIZARD:-}" != "1" ]]; then
+  echo
+  echo "$INSTALL_LAUNCHING"
+  WG_HOME="$INSTALL_DIR" ./wg-fzf.sh --first-run
+  echo
+fi
 echo "$INSTALL_COMPLETE"

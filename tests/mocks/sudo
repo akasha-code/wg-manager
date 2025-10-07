@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Pass-through sudo mock: just exec the command
-exec "$@"
+# Minimal sudo mock:
+# - 'sudo -v' should indicate no password cache (exit 1) to force local install path
+# - otherwise, just exec the command without elevation
 
+if [[ "${1:-}" == "-v" ]]; then
+  exit 1
+fi
+
+exec "$@"

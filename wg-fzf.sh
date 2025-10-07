@@ -244,6 +244,41 @@ rename_peer() {
   sudo sed -i "s/# --- peer $old ---/# --- peer $new ---/" "$WG_CONF"
   restart_wg
 }
+
+peer_menu_loop() {
+  local peer="$1"
+  while true; do
+    clear
+    action=$(printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
+             "${PEER_VIEW:-View}" "${PEER_EDIT:-Edit}" "${PEER_QR:-QR}" "${PEER_RENAME:-Rename}" "${PEER_DELETE:-Delete}" \
+             "${PEER_MAIN_MENU:-🏠 Main Menu}" "${BACK:-Back}" | \
+             fzf --height=16 --reverse --prompt="${PROMPT_PEER_MENU:-$peer > }")
+    case "$action" in
+      *View*) view_peer "$peer" ; pause ;;
+      *Edit*) edit_peer "$peer" ; pause ;;
+      *QR*) qr_peer "$peer" ; pause ;;
+      *Rename*|*Renombrar*) 
+        new_peer=$(rename_peer "$peer")
+        if [[ -n "$new_peer" && "$new_peer" != "$peer" ]]; then
+          peer="$new_peer"
+        fi
+        pause
+        ;;
+      *Delete*|*Eliminar*) 
+        if delete_peer "$peer"; then
+          echo "Peer deleted. Returning to main menu..."
+          sleep 2
+          return 0
+        fi
+        pause
+        ;;
+      *Main*|*Principal*) return 0 ;;
+      *Back*|*Atrás*) return 0 ;;
+      *) return 0 ;;
+    esac
+  done
+}
+
 peer_more() {
   local peer="$1"
   action=$(printf "%s\n%s\n%s\n%s\n%s\n%s\n" \
@@ -318,6 +353,16 @@ if [[ $# -gt 0 ]]; then
     add) shift; sudo "$WG_HOME/create-client.sh" "$@" ; exit 0 ;;
     --wizard) wizard_verbose; touch "$SETUP_FLAG"; exit 0 ;;
     --first-run) first_run_menu; exit 0 ;;
+    --peer-menu) 
+      shift
+      if [[ $# -gt 0 ]]; then
+        peer_menu_loop "$1"
+        exit 0
+      else
+        echo "❌ Peer name required for --peer-menu"
+        exit 1
+      fi
+      ;;
   esac
 fi
 
