@@ -139,8 +139,15 @@ first_run_menu() {
 
 # Load language (after ENV exists)
 load_lang() {
-  local lang_file="$LANG_DIR/${WG_LANG:-en}.lang"
-  [[ -f "$lang_file" ]] && source "$lang_file" || true
+  local lang="${WG_LANG:-en}"
+  local lang_file="$LANG_DIR/${lang}.lang"
+  if [[ -f "$lang_file" ]]; then
+    source "$lang_file"
+  else
+    # Fallback to English if specified language not found
+    lang_file="$LANG_DIR/en.lang"
+    [[ -f "$lang_file" ]] && source "$lang_file"
+  fi
 }
 
 # Optional direct wizard
@@ -153,10 +160,16 @@ fi
 
 # First-run orchestrator (used by installer)
 if [[ "${1:-}" == "--first-run" ]]; then
+  # Load language first, even before checking ENV_FILE
+  if [[ -f "$ENV_FILE" ]]; then
+    source "$ENV_FILE"
+  fi
+  load_lang
+  
   if [[ ! -f "$ENV_FILE" ]]; then
     first_run_menu
   else
-    echo "$SETUP_EXISTING_ENV"
+    echo "${SETUP_EXISTING_ENV:-✅ Configuration already exists.}"
   fi
   exit 0
 fi

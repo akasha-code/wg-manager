@@ -98,17 +98,84 @@ fi
 
 echo "✅ Wrapper created successfully"
 
+# Additional Arch Linux debugging
+if [[ "$DISTRO" == "arch" || "$DISTRO" == "manjaro" ]]; then
+  echo "🔍 Arch Linux specific checks:"
+  echo "   - Checking if /usr is mounted read-only..."
+  mount | grep -E "^[^ ]+ on /usr " | grep -q "ro," && echo "   ⚠️  /usr is mounted read-only!" || echo "   ✅ /usr is writable"
+  
+  echo "   - Checking filesystem type..."
+  stat -f -c "%T" /usr/local 2>/dev/null || echo "   ⚠️  Cannot determine filesystem type"
+  
+  echo "   - Checking available space..."
+  df -h /usr/local 2>/dev/null | tail -1 || echo "   ⚠️  Cannot check disk space"
+fi
+
 # Try to install system-wide first, fallback to user directory
 if sudo -v >/dev/null 2>&1; then
-  # Ensure /usr/local/bin exists
-  sudo mkdir -p /usr/local/bin 2>/dev/null || true
-  
   echo "🔧 Attempting system-wide installation..."
-  if [[ -f "$INSTALL_DIR/wg-manager-executable" ]] && sudo cp "$INSTALL_DIR/wg-manager-executable" "/usr/local/bin/wg-manager" 2>/dev/null && sudo chmod +x "/usr/local/bin/wg-manager" 2>/dev/null; then
-    echo "$INSTALL_CMD_INSTALLED"
+  echo "   Checking /usr/local/bin directory..."
+  
+  # Debug: Check if /usr/local/bin exists and permissions
+  if [[ -d "/usr/local/bin" ]]; then
+    echo "   ✅ /usr/local/bin exists"
+    ls -ld /usr/local/bin || echo "   ⚠️  Cannot list /usr/local/bin"
   else
-    echo "⚠️  Failed to install system-wide, installing locally..."
-    echo "   Reason: Could not copy to /usr/local/bin (permissions, filesystem, or file missing)"
+    echo "   📁 /usr/local/bin does not exist, creating..."
+  fi
+  
+  # Create directory with detailed error checking
+  if sudo mkdir -p /usr/local/bin 2>&1; then
+    echo "   ✅ Directory created/confirmed"
+  else
+    echo "   ❌ Failed to create /usr/local/bin"
+  fi
+  
+  # Check filesystem info
+  echo "   � Filesystem info for /usr/local/bin:"
+  df -h /usr/local/bin 2>/dev/null || echo "   ⚠️  Cannot get filesystem info"
+  
+  # Test write permissions first
+  echo "   🧪 Testing write permissions..."
+  if sudo touch /usr/local/bin/.test-write 2>/dev/null && sudo rm -f /usr/local/bin/.test-write 2>/dev/null; then
+    echo "   ✅ Write permissions OK"
+    
+    # Now try the actual copy with detailed error output
+    echo "   📋 Copying file..."
+    copy_error=$(sudo cp "$INSTALL_DIR/wg-manager-executable" "/usr/local/bin/wg-manager" 2>&1)
+    copy_result=$?
+    
+    if [[ $copy_result -eq 0 ]]; then
+      echo "   ✅ Copy successful"
+      
+      # Try chmod with detailed error output
+      echo "   🔧 Setting permissions..."
+      chmod_error=$(sudo chmod +x "/usr/local/bin/wg-manager" 2>&1)
+      chmod_result=$?
+      
+      if [[ $chmod_result -eq 0 ]]; then
+        echo "   ✅ Permissions set successfully"
+        echo "$INSTALL_CMD_INSTALLED"
+      else
+        echo "   ❌ chmod failed: $chmod_error"
+        echo "   🔄 Falling back to local installation..."
+        sudo rm -f "/usr/local/bin/wg-manager" 2>/dev/null
+        mkdir -p "$HOME/.local/bin"
+        cp "$INSTALL_DIR/wg-manager-executable" "$HOME/.local/bin/wg-manager"
+        chmod +x "$HOME/.local/bin/wg-manager"
+        echo "$INSTALL_CMD_LOCAL $HOME/.local/bin/wg-manager"
+      fi
+    else
+      echo "   ❌ Copy failed: $copy_error"
+      echo "   🔄 Falling back to local installation..."
+      mkdir -p "$HOME/.local/bin"
+      cp "$INSTALL_DIR/wg-manager-executable" "$HOME/.local/bin/wg-manager"
+      chmod +x "$HOME/.local/bin/wg-manager"
+      echo "$INSTALL_CMD_LOCAL $HOME/.local/bin/wg-manager"
+    fi
+  else
+    echo "   ❌ No write permissions to /usr/local/bin"
+    echo "   🔄 Installing locally instead..."
     mkdir -p "$HOME/.local/bin"
     cp "$INSTALL_DIR/wg-manager-executable" "$HOME/.local/bin/wg-manager"
     chmod +x "$HOME/.local/bin/wg-manager"
