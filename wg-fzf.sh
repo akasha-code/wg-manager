@@ -231,18 +231,21 @@ qr_peer() { clear; qrencode -t ANSIUTF8 < "$BASE_DIR/$1/$1.conf"; echo; footer; 
 delete_peer() {
   local peer="$1"
   read -rp "${CONFIRM_DELETE:-Delete} '$peer'? [y/N]: " yn
-  [[ $yn =~ ^[Yy]$ ]] || return
+  [[ $yn =~ ^[Yy]$ ]] || return 1
   sudo sed -i "/# --- peer $peer ---/,+3d" "$WG_CONF"
   sudo rm -rf "$BASE_DIR/$peer"
   restart_wg
+  return 0
 }
 rename_peer() {
-  local old="$1"; read -rp "New name for '$old': " new; [[ -z "$new" ]] && { echo "Cancelled."; pause; return; }
-  [[ -d "$BASE_DIR/$new" ]] && { echo "Name exists."; pause; return; }
+  local old="$1"; read -rp "New name for '$old': " new; [[ -z "$new" ]] && { echo "Cancelled."; pause; return 1; }
+  [[ -d "$BASE_DIR/$new" ]] && { echo "Name exists."; pause; return 1; }
   sudo mv "$BASE_DIR/$old" "$BASE_DIR/$new"
   sudo mv "$BASE_DIR/$new/$old.conf" "$BASE_DIR/$new/$new.conf"
   sudo sed -i "s/# --- peer $old ---/# --- peer $new ---/" "$WG_CONF"
   restart_wg
+  echo "$new"
+  return 0
 }
 
 peer_menu_loop() {
