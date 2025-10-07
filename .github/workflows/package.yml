@@ -1,0 +1,158 @@
+name: Package Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to package'
+        required: true
+        default: '0.0.1'
+
+permissions:
+  contents: write
+
+jobs:
+  package-arch:
+    runs-on: ubuntu-latest
+    name: Package for Arch Linux (AUR)
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix
+        else
+          VERSION="${{ github.event.inputs.version }}"
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "Version: $VERSION"
+    
+    - name: Calculate source tarball checksum
+      id: checksum
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        URL="https://github.com/akasha-code/wg-manager/archive/refs/tags/v$VERSION.tar.gz"
+        
+        # Download and calculate checksum
+        wget -O "wg-manager-$VERSION.tar.gz" "$URL"
+        CHECKSUM=$(sha256sum "wg-manager-$VERSION.tar.gz" | cut -d' ' -f1)
+        
+        echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+        echo "Checksum: $CHECKSUM"
+    
+    - name: Update PKGBUILD
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        CHECKSUM="${{ steps.checksum.outputs.checksum }}"
+        
+        # Update PKGBUILD with real version and checksum
+        sed -i "s/pkgver=.*/pkgver=$VERSION/" packaging/arch/PKGBUILD
+        sed -i "s/sha256sums=('SKIP')/sha256sums=('$CHECKSUM')/" packaging/arch/PKGBUILD
+        
+        echo "Updated PKGBUILD:"
+        cat packaging/arch/PKGBUILD
+    
+    - name: Generate .SRCINFO
+      run: |
+        cd packaging/arch
+        # Install makepkg for .SRCINFO generation
+        sudo apt-get update
+        sudo apt-get install -y devscripts
+        
+        # Create a simple .SRCINFO (manual generation for CI)
+        cat > .SRCINFO << 'EOF'
+        pkgbase = wg-manager
+        	pkgdesc = Interactive TUI helper for WireGuard VPN server management with bilingual support
+        	pkgver = ${{ steps.version.outputs.version }}
+        	pkgrel = 1
+        	url = https://github.com/akasha-code/wg-manager
+        	arch = any
+        	license = MIT
+        	depends = bash
+        	depends = wireguard-tools
+        	depends = fzf
+        	depends = qrencode
+        	depends = sudo
+        	optdepends = glow: enhanced markdown rendering for credits
+        	optdepends = git: for version detection and updates
+        	backup = usr/share/wg-manager/.env
+        	source = wg-manager-${{ steps.version.outputs.version }}.tar.gz::https://github.com/akasha-code/wg-manager/archive/refs/tags/v${{ steps.version.outputs.version }}.tar.gz
+        	sha256sums = ${{ steps.checksum.outputs.checksum }}
+
+        pkgname = wg-manager
+        EOF
+    
+    - name: Upload AUR package files
+      uses: actions/upload-artifact@v4
+      with:
+        name: arch-package
+        path: |
+          packaging/arch/PKGBUILD
+          packaging/arch/.SRCINFO
+
+  package-debian:
+    runs-on: ubuntu-latest
+    name: Build Debian package
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y debhelper devscripts build-essential lintian
+    
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix
+        else
+          VERSION="${{ github.event.inputs.version }}"
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "Version: $VERSION"
+    
+    - name: Update package version
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        
+        # Update changelog
+        DEBFULLNAME="GitHub Actions" DEBEMAIL="actions@github.com" \
+        dch --newversion "$VERSION-1" --distribution unstable \
+        "Automated build for version $VERSION"
+    
+    - name: Copy debian files to project root
+      run: |
+        cp -r packaging/debian .
+    
+    - name: Build source package
+      run: |
+        dpkg-buildpackage -S -us -uc
+    
+    - name: Build binary package
+      run: |
+        dpkg-buildpackage -b -us -uc
+    
+    - name: Run lintian
+      run: |
+        lintian ../*.deb || true  # Don't fail on lintian warnings
+    
+    - name: Upload Debian packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: debian-packages
+        path: |
+          ../*.deb
+          ../*.dsc
+          ../*.tar.*
+          ../*.changes

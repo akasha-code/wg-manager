@@ -4,18 +4,20 @@ set -euo pipefail
 # Get version from VERSION file
 get_version() {
   local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local version="6.4"  # fallback version
   
-  # Read version from VERSION file
+  # Read version from VERSION file (required)
   if [[ -f "$script_dir/VERSION" ]]; then
-    version=$(cat "$script_dir/VERSION" 2>/dev/null | tr -d '\n\r\t ' || echo "6.4")
+    local version=$(cat "$script_dir/VERSION" 2>/dev/null | tr -d '\n\r\t ' || echo "")
     # Ensure we have a valid version
-    if [[ -z "$version" ]]; then
-      version="6.4"
+    if [[ -n "$version" ]]; then
+      echo "$version"
+      return 0
     fi
   fi
   
-  echo "$version"
+  # If VERSION file doesn't exist or is empty, exit with error
+  echo "ERROR: VERSION file not found or empty. Cannot determine version." >&2
+  exit 1
 }
 
 VERSION=$(get_version)

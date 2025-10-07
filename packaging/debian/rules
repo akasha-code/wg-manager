@@ -1,0 +1,37 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	# Main script and utilities
+	install -Dm755 wg-manager debian/wg-manager/usr/share/wg-manager/wg-manager
+	install -Dm755 create-client.sh debian/wg-manager/usr/share/wg-manager/create-client.sh
+	install -Dm755 wg-fzf.sh debian/wg-manager/usr/share/wg-manager/wg-fzf.sh
+	install -Dm755 install.sh debian/wg-manager/usr/share/wg-manager/install.sh
+	
+	# Configuration files
+	install -Dm644 .env.example debian/wg-manager/usr/share/wg-manager/.env.example
+	install -Dm644 VERSION debian/wg-manager/usr/share/wg-manager/VERSION
+	
+	# Language files
+	install -Dm644 languages/en.lang debian/wg-manager/usr/share/wg-manager/languages/en.lang
+	install -Dm644 languages/es.lang debian/wg-manager/usr/share/wg-manager/languages/es.lang
+	
+	# Documentation
+	install -Dm644 README.md debian/wg-manager/usr/share/doc/wg-manager/README.md
+	install -Dm644 README.es.md debian/wg-manager/usr/share/doc/wg-manager/README.es.md
+	install -Dm644 CREDITS.md debian/wg-manager/usr/share/doc/wg-manager/CREDITS.md
+	
+	# Create wrapper script
+	echo '#!/usr/bin/env bash' > debian/wg-manager/usr/bin/wg-manager
+	echo 'export WG_HOME="/usr/share/wg-manager"' >> debian/wg-manager/usr/bin/wg-manager
+	echo 'exec "/usr/share/wg-manager/wg-manager" "$$@"' >> debian/wg-manager/usr/bin/wg-manager
+	chmod +x debian/wg-manager/usr/bin/wg-manager
+
+override_dh_auto_test:
+	# Run basic syntax check
+	bash -n wg-manager
+	bash -n create-client.sh
+	bash -n wg-fzf.sh
+	bash -n install.sh

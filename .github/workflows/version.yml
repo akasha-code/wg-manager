@@ -1,0 +1,97 @@
+name: Version Management
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+
+permissions:
+  contents: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Get current version
+      id: current-version
+      run: |
+        if [ -f "VERSION" ]; then
+          CURRENT=$(cat VERSION 2>/dev/null | tr -d '\n\r\t ' || echo "0.0.1")
+        else
+          CURRENT="0.0.1"
+        fi
+        echo "current-version=$CURRENT" >> "$GITHUB_OUTPUT"
+        echo "Current version: $CURRENT"
+    
+    - name: Calculate new version
+      id: new-version
+      run: |
+        CURRENT="${{ steps.current-version.outputs.current-version }}"
+        
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          # Manual bump
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+        else
+          # Auto bump based on commits
+          COMMITS=$(git log --oneline -n 10)
+          if echo "$COMMITS" | grep -qE "(BREAKING|major)"; then
+            BUMP_TYPE="major"
+          elif echo "$COMMITS" | grep -qE "(feat|feature|minor)"; then
+            BUMP_TYPE="minor"
+          else
+            BUMP_TYPE="patch"
+          fi
+        fi
+        
+        # Parse current version
+        IFS='.' read -ra VERSION_PARTS <<< "$CURRENT"
+        MAJOR=${VERSION_PARTS[0]:-0}
+        MINOR=${VERSION_PARTS[1]:-0}
+        PATCH=${VERSION_PARTS[2]:-1}
+        
+        # Bump version
+        case $BUMP_TYPE in
+          major) NEW_VERSION="$((MAJOR + 1)).0.0" ;;
+          minor) NEW_VERSION="$MAJOR.$((MINOR + 1)).0" ;;
+          patch) NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))" ;;
+        esac
+        
+        echo "new-version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+        echo "bump-type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
+        echo "Bumping $BUMP_TYPE: $CURRENT -> $NEW_VERSION"
+    
+    - name: Update VERSION file
+      run: |
+        NEW_VERSION="${{ steps.new-version.outputs.new-version }}"
+        echo "$NEW_VERSION" > VERSION
+        echo "Updated VERSION file to: $NEW_VERSION"
+    
+    - name: Create git tag
+      run: |
+        NEW_VERSION="${{ steps.new-version.outputs.new-version }}"
+        BUMP_TYPE="${{ steps.new-version.outputs.bump-type }}"
+        
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add VERSION
+        git commit -m "chore($BUMP_TYPE): bump version to $NEW_VERSION" || exit 0
+        git tag "v$NEW_VERSION"
+        git push origin main
+        git push origin "v$NEW_VERSION"

@@ -1,0 +1,50 @@
+# Maintainer: Guido Nicolás Quadrini <your-email@example.com>
+pkgname=wg-manager
+pkgver=0.0.1
+pkgrel=1
+pkgdesc="Interactive TUI helper for WireGuard VPN server management with bilingual support"
+arch=('any')
+url="https://github.com/akasha-code/wg-manager"
+license=('MIT')
+depends=('bash' 'wireguard-tools' 'fzf' 'qrencode' 'sudo')
+optdepends=(
+    'glow: enhanced markdown rendering for credits'
+    'git: for version detection and updates'
+)
+backup=('usr/share/wg-manager/.env')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')  # Update this with actual checksum
+
+package() {
+    cd "$srcdir/$pkgname-$pkgver"
+    
+    # Main script
+    install -Dm755 wg-manager "$pkgdir/usr/bin/wg-manager"
+    install -Dm755 create-client.sh "$pkgdir/usr/share/wg-manager/create-client.sh"
+    install -Dm755 wg-fzf.sh "$pkgdir/usr/share/wg-manager/wg-fzf.sh"
+    install -Dm755 install.sh "$pkgdir/usr/share/wg-manager/install.sh"
+    
+    # Configuration files
+    install -Dm644 .env.example "$pkgdir/usr/share/wg-manager/.env.example"
+    install -Dm644 VERSION "$pkgdir/usr/share/wg-manager/VERSION"
+    
+    # Language files
+    install -Dm644 languages/en.lang "$pkgdir/usr/share/wg-manager/languages/en.lang"
+    install -Dm644 languages/es.lang "$pkgdir/usr/share/wg-manager/languages/es.lang"
+    
+    # Documentation
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+    install -Dm644 README.es.md "$pkgdir/usr/share/doc/$pkgname/README.es.md"
+    install -Dm644 CREDITS.md "$pkgdir/usr/share/doc/$pkgname/CREDITS.md"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    
+    # Create wrapper script that sets WG_HOME
+    cat > "$pkgdir/usr/bin/wg-manager" << 'EOF'
+#!/usr/bin/env bash
+export WG_HOME="/usr/share/wg-manager"
+exec "/usr/share/wg-manager/wg-manager" "$@"
+EOF
+    chmod +x "$pkgdir/usr/bin/wg-manager"
+}
+
+# vim:set ts=2 sw=2 et:

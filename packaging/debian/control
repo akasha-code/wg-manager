@@ -1,0 +1,32 @@
+Source: wg-manager
+Section: net
+Priority: optional
+Maintainer: Guido Nicolás Quadrini <your-email@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/akasha-code/wg-manager
+Vcs-Browser: https://github.com/akasha-code/wg-manager
+Vcs-Git: https://github.com/akasha-code/wg-manager.git
+Rules-Requires-Root: no
+
+Package: wg-manager
+Architecture: all
+Depends: bash, wireguard-tools, fzf, qrencode, sudo, ${misc:Depends}
+Recommends: glow
+Suggests: git
+Description: Interactive TUI helper for WireGuard VPN server management
+ WireGuard Manager is an interactive TUI helper designed to simplify the
+ day-to-day management of a self-hosted WireGuard VPN server. It wraps the
+ 'wg' tooling with an fzf-powered menu so you can configure the server,
+ add peers and inspect status without memorizing long commands.
+ .
+ The project ships with bilingual (EN/ES) prompts, guided first-run wizards
+ and sane defaults so that you can go from zero to a usable VPN in minutes.
+ .
+ Key features:
+  * First-run onboarding with multiple setup modes
+  * Automatic config management with .env files
+  * Peer provisioning with QR codes and routing options
+  * Service helpers for WireGuard management
+  * Multi-language support (English/Spanish)
+  * User-friendly interface with clear navigation
