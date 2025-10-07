@@ -1,4 +1,4 @@
-# WireGuard Admin
+# WireGuard Manager (TUI)
 
 WireGuard Admin is an interactive TUI helper designed to simplify the day-to-day
 management of a self-hosted WireGuard VPN server. It wraps the `wg` tooling with
