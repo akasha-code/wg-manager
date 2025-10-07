@@ -15,7 +15,7 @@ case "$DISTRO" in
     sudo pacman -S --needed "${pkgs[@]}" base-devel --noconfirm
     # Ensure WireGuard kernel module is loaded on Arch
     if ! lsmod | grep -q wireguard; then
-      echo "🔧 Loading WireGuard kernel module..."
+      echo "$INSTALL_WRAPPER_CREATING"
       sudo modprobe wireguard 2>/dev/null || echo "⚠️  Could not load WireGuard module - may need manual setup"
     fi
     ;;
@@ -74,7 +74,7 @@ fi
 INSTALL_DIR="$(pwd)"
 
 # Prepare the executable script with embedded path
-echo "🔧 Creating executable wrapper..."
+echo "$INSTALL_WRAPPER_CREATING"
 cat > "$INSTALL_DIR/wg-manager-executable" <<EOF
 #!/usr/bin/env bash
 export WG_HOME="$INSTALL_DIR"
@@ -83,8 +83,8 @@ EOF
 
 # Verify the file was created
 if [[ ! -f "$INSTALL_DIR/wg-manager-executable" ]]; then
-  echo "❌ Failed to create wg-manager-executable wrapper"
-  echo "   Check write permissions in: $INSTALL_DIR"
+  echo "$INSTALL_WRAPPER_FAILED"
+  echo "$INSTALL_WRAPPER_PERMISSIONS $INSTALL_DIR"
   exit 1
 fi
 
@@ -92,23 +92,15 @@ chmod +x "$INSTALL_DIR/wg-manager-executable"
 
 # Verify permissions were set
 if [[ ! -x "$INSTALL_DIR/wg-manager-executable" ]]; then
-  echo "❌ Failed to set execute permissions on wrapper"
+  echo "$INSTALL_WRAPPER_CHMOD_FAILED"
   exit 1
 fi
 
-echo "✅ Wrapper created successfully"
+echo "$INSTALL_WRAPPER_SUCCESS"
 
 # Additional Arch Linux debugging
-if [[ "$DISTRO" == "arch" || "$DISTRO" == "manjaro" ]]; then
-  echo "🔍 Arch Linux specific checks:"
-  echo "   - Checking if /usr is mounted read-only..."
-  mount | grep -E "^[^ ]+ on /usr " | grep -q "ro," && echo "   ⚠️  /usr is mounted read-only!" || echo "   ✅ /usr is writable"
-  
-  echo "   - Checking filesystem type..."
-  stat -f -c "%T" /usr/local 2>/dev/null || echo "   ⚠️  Cannot determine filesystem type"
-  
-  echo "   - Checking available space..."
-  df -h /usr/local 2>/dev/null | tail -1 || echo "   ⚠️  Cannot check disk space"
+if [ -f "/etc/arch-release" ]; then
+  mount | grep -E "^[^ ]+ on /usr " | grep -q "ro," && echo "$INSTALL_USR_READONLY"
 fi
 
 # Try to install system-wide first, fallback to user directory
@@ -188,22 +180,19 @@ echo
 if [[ "${WG_INSTALL_NO_WIZARD:-}" != "1" ]]; then
   echo
   echo "$INSTALL_LAUNCHING"
-  echo "🔧 Debug: About to run first-run setup..."
-  echo "   WG_HOME=$INSTALL_DIR"
-  echo "   Command: bash ./wg-manager --first-run"
   
   # Ensure wg-manager has execute permissions
   chmod +x ./wg-manager
   
   echo
   if WG_HOME="$INSTALL_DIR" bash ./wg-manager --first-run; then
-    echo "✅ First-run setup completed successfully"
+    echo "$INSTALL_SETUP_SUCCESS"
   else
     exit_code=$?
-    echo "⚠️  First-run setup had issues (exit code: $exit_code)"
-    echo "   Installation completed, but first-run configuration needs to be done manually"
-    echo "   To complete setup, run: wg-manager --first-run"
-    echo "   Or if that doesn't work: cd '$INSTALL_DIR' && bash ./wg-manager --first-run"
+    echo "$INSTALL_SETUP_ISSUES $exit_code)"
+    echo "$INSTALL_COMPLETE_MANUAL"
+    echo "$INSTALL_COMPLETE_MANUAL_CMD"
+    echo "$INSTALL_COMPLETE_MANUAL_ALT '$INSTALL_DIR' && bash ./wg-manager --first-run"
   fi
   echo
 fi

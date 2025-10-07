@@ -17,8 +17,10 @@ to a usable VPN in minutes.
   routing modes using `create-client.sh` or from the main menu.
 - 🔁 **Service helpers** – restart WireGuard, validate configuration and review
   logs from inside the menu.
-- 🌐 **Multi-language support** – English and Spanish localisation strings are
-  bundled, with the language selected during installation.
+- 🌐 **Multi-language support** – English and Spanish localisation with automatic
+  application restart when changing languages for seamless experience.
+- 🚪 **User-friendly interface** – intuitive menu system with clear exit options
+  and streamlined installation process.
 
 ## Requirements
 
@@ -37,15 +39,20 @@ cd wg-manager
 
 ### 2. Run the installer
 
-The installer installs the few userland dependencies, prepares a `.env` file and
-registers a `wg-manager` command that launches the TUI.
+The installer automatically detects your distribution, installs required packages,
+and prepares a `.env` file with a clean, professional installation experience.
 
 ```bash
 ./install.sh
 ```
 
-During the process you will be prompted to pick your preferred language and a
-first-run mode (defaults, simple prompts or the verbose wizard).
+During installation you will:
+- Select your preferred language (English/Spanish)
+- Choose a first-run setup mode (defaults, simple prompts, or verbose wizard)
+- Have the `wg-manager` command automatically registered in your system
+
+The installer provides intelligent fallbacks, attempting system-wide installation
+first, then falling back to local user installation if needed.
 
 > **Note**: The script tries to detect your distribution and install packages via
 > `apt`, `pacman`, `dnf` or `zypper`. If your distro is not supported you will
@@ -75,14 +82,29 @@ Key operations available from the menu include:
   choose between full-tunnel, split-tunnel or custom routing.
 - **Edit settings**: open `.env` in your `$EDITOR` to tweak defaults such as DNS
   servers, keepalive or the base network.
+- **Change language**: switch between English and Spanish with automatic 
+  application restart to apply the new language immediately.
 - **Service controls**: restart `wg-quick@<interface>` or validate the current
   WireGuard configuration.
+- **Exit application**: clean exit option available directly from the main menu
+  (in addition to ESC key support).
 - **Wizard rerun**: start the detailed setup wizard at any time with
   `wg-manager --wizard`.
 
 Generated client artefacts are stored under `~/wireguard-files/<peer-name>/` by
 default. Each directory contains the client configuration (`.conf`) and a QR
 code (`.png`) that can be scanned from mobile devices.
+
+## Recent Improvements
+
+- **Enhanced user experience**: Streamlined installation with reduced debug output
+  for a cleaner, more professional setup process.
+- **Complete internationalization**: All user-facing messages now support both
+  English and Spanish languages.
+- **Smart language switching**: Automatic application restart when changing 
+  languages with user confirmation to ensure seamless language transitions.
+- **Improved navigation**: Added clear exit option to main menu for better
+  user experience and discoverability.
 
 ## Credits y apoyo
 

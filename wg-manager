@@ -329,16 +329,47 @@ view_general() {
   esac
 }
 
+change_language() {
+  clear
+  echo "${LANGUAGE_RESTART_TITLE:-Language Change Restart Required}"
+  echo "${LANGUAGE_RESTART_MESSAGE:-The application needs to restart to apply the new language.}"
+  echo
+  read -rp "${LANGUAGE_RESTART_CONFIRM:-Do you want to restart now? [Y/n]: }" restart_choice
+  restart_choice="${restart_choice:-Y}"
+  
+  if [[ "$restart_choice" =~ ^[YySs]$ ]]; then
+    # Select new language
+    sel=$(printf "en\nes" | fzf --height=6 --reverse --prompt="${LANGUAGE_PROMPT:-Language > }")
+    if [[ -n "$sel" ]]; then
+      # Update language in .env file
+      if grep -q '^WG_LANG=' "$ENV_FILE"; then
+        sed -i "s/^WG_LANG=.*/WG_LANG=\"$sel\"/" "$ENV_FILE"
+      else
+        echo "WG_LANG=\"$sel\"" >> "$ENV_FILE"
+      fi
+      
+      # Restart the application
+      clear
+      echo "🔄 Restarting application with new language..."
+      sleep 1
+      exec "$0" "$@"
+    else
+      echo "${LANGUAGE_RESTART_CANCELLED:-Language change cancelled.}"
+      sleep 1
+    fi
+  else
+    echo "${LANGUAGE_RESTART_CANCELLED:-Language change cancelled.}"
+    sleep 1
+  fi
+}
+
 settings_menu() {
   action=$(printf "%s\n%s\n%s\n" \
            "${SETTINGS_EDIT_ENV:-Edit .env}" "${SETTINGS_CHANGE_LANGUAGE:-Change language}" "${SETTINGS_RESTORE_ENV:-Restore defaults}" | \
            fzf --height=12 --reverse --prompt="${PROMPT_ACTION:-Action > }")
   case "$action" in
     *Edit*) "$EDITOR" "$ENV_FILE" ;;
-    *Change*|*Cambiar*)
-        sel=$(printf "en\nes" | fzf --height=6 --reverse --prompt="$LANGUAGE_PROMPT")
-        [[ -n "$sel" ]] && (grep -q '^WG_LANG=' "$ENV_FILE" && sed -i "s/^WG_LANG=.*/WG_LANG=\"$sel\"/" "$ENV_FILE" || echo "WG_LANG=\"$sel\"" >> "$ENV_FILE")
-        ;;
+    *Change*|*Cambiar*) change_language ;;
     *Restore*|*Restaurar*) cp "$WG_HOME/.env.example" "$ENV_FILE";;
   esac
 }
@@ -410,9 +441,9 @@ fi
 # Main menu
 while true; do
   clear
-  choice=$(printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
+  choice=$(printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
            "${MENU_VIEW_PEERS:-View peers}" "${MENU_CREATE_NEW:-Create new}" "${MENU_GENERAL_CONFIG:-General config}" "${MENU_TOOLS:-Tools}" \
-           "${MENU_SETTINGS:-Settings}" "${MENU_RESTART_SERVICE:-Restart service}" "${MENU_STATUS:-VPN Status}" "${MENU_CREDITS:-Credits}" | \
+           "${MENU_SETTINGS:-Settings}" "${MENU_RESTART_SERVICE:-Restart service}" "${MENU_STATUS:-VPN Status}" "${MENU_CREDITS:-Credits}" "${MENU_EXIT:-Exit}" | \
            fzf --height=20 --reverse --prompt="${PROMPT_MANAGER:-WireGuard Manager > }")
   case "$choice" in
     *View*|*Ver*) peers=$(list_peers); [[ -z "$peers" ]] && { echo "${NO_PEERS:-No peers}"; footer; pause; continue; }; peer=$(echo "$peers" | fzf --height=20 --reverse --prompt="${PROMPT_SELECT_PEER:-Select peer > }"); [[ -n "$peer" ]] && peer_more "$peer" ;;
@@ -422,6 +453,7 @@ while true; do
     *Settings*|*Configuración*) settings_menu ;;
     *Restart*|*Reiniciar*) restart_wg ;;
     *Status*|*Estado*) show_status ;;
+    *Exit*|*Salir*) clear; echo "👋 Goodbye!"; exit 0 ;;
     *Credits*|*Créditos*)
       clear
       if [[ -f "$WG_HOME/CREDITS.md" ]]; then
@@ -431,6 +463,7 @@ while true; do
       fi
       footer; pause
       ;;
-    *) clear; exit 0 ;;
+    "") break ;;
+    *) echo "Invalid option" ;;
   esac
 done
