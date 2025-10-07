@@ -1,4 +1,4 @@
-# WireGuard Admin v6.3
+# WireGuard Admin
 
 WireGuard Admin is an interactive TUI helper designed to simplify the day-to-day
 management of a self-hosted WireGuard VPN server. It wraps the `wg` tooling with
@@ -33,7 +33,7 @@ to a usable VPN in minutes.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-user>/wg-manager.git
+git clone https://github.com/akasha-code/wg-manager.git
 cd wg-manager
 ```
 
@@ -105,6 +105,8 @@ code (`.png`) that can be scanned from mobile devices.
   languages with user confirmation to ensure seamless language transitions.
 - **Improved navigation**: Added clear exit option to main menu for better
   user experience and discoverability.
+- **Automated versioning**: GitHub Actions automatically manage version numbers
+  based on commit messages, eliminating manual version management.
 
 ## Credits y apoyo
 

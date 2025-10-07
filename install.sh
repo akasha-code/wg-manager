@@ -1,7 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "🛠 Installing WireGuard Admin (v6.3) / Instalando WireGuard Admin (v6.3)"
+# Get version from VERSION file
+get_version() {
+  local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local version="6.4"  # fallback version
+  
+  # Read version from VERSION file
+  if [[ -f "$script_dir/VERSION" ]]; then
+    version=$(cat "$script_dir/VERSION" 2>/dev/null | tr -d '\n\r\t ' || echo "6.4")
+    # Ensure we have a valid version
+    if [[ -z "$version" ]]; then
+      version="6.4"
+    fi
+  fi
+  
+  echo "$version"
+}
+
+VERSION=$(get_version)
+
+# Determine script installation directory  
+INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "🛠 Installing WireGuard Admin (v$VERSION) / Instalando WireGuard Admin (v$VERSION)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Detect distro
@@ -74,7 +96,7 @@ fi
 INSTALL_DIR="$(pwd)"
 
 # Prepare the executable script with embedded path
-echo "$INSTALL_WRAPPER_CREATING"
+echo "🔧 Creating executable wrapper... / Creando wrapper ejecutable..."
 cat > "$INSTALL_DIR/wg-manager-executable" <<EOF
 #!/usr/bin/env bash
 export WG_HOME="$INSTALL_DIR"
@@ -83,8 +105,8 @@ EOF
 
 # Verify the file was created
 if [[ ! -f "$INSTALL_DIR/wg-manager-executable" ]]; then
-  echo "$INSTALL_WRAPPER_FAILED"
-  echo "$INSTALL_WRAPPER_PERMISSIONS $INSTALL_DIR"
+  echo "❌ Failed to create wg-manager-executable wrapper / Falló al crear wrapper wg-manager-executable"
+  echo "   Check write permissions in: $INSTALL_DIR / Verifica permisos de escritura en: $INSTALL_DIR"
   exit 1
 fi
 
@@ -92,15 +114,15 @@ chmod +x "$INSTALL_DIR/wg-manager-executable"
 
 # Verify permissions were set
 if [[ ! -x "$INSTALL_DIR/wg-manager-executable" ]]; then
-  echo "$INSTALL_WRAPPER_CHMOD_FAILED"
+  echo "❌ Failed to set execute permissions on wrapper / Falló al establecer permisos de ejecución en wrapper"
   exit 1
 fi
 
-echo "$INSTALL_WRAPPER_SUCCESS"
+echo "✅ Wrapper created successfully / Wrapper creado exitosamente"
 
 # Additional Arch Linux debugging
 if [ -f "/etc/arch-release" ]; then
-  mount | grep -E "^[^ ]+ on /usr " | grep -q "ro," && echo "$INSTALL_USR_READONLY"
+  mount | grep -E "^[^ ]+ on /usr " | grep -q "ro," && echo "⚠️  /usr is mounted read-only! / ¡/usr está montado como solo lectura!"
 fi
 
 # Try to install system-wide first, fallback to user directory

@@ -1,0 +1,41 @@
+name: Simple Version Update
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Generate version
+      id: version
+      run: |
+        # Generate version based on date and run number
+        DATE=$(date +'%Y.%m')
+        RUN_NUMBER="${{ github.run_number }}"
+        NEW_VERSION="$DATE.$RUN_NUMBER"
+        
+        echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "Generated version: $NEW_VERSION"
+    
+    - name: Update VERSION file
+      run: |
+        NEW_VERSION="${{ steps.version.outputs.new-version }}"
+        echo "$NEW_VERSION" > VERSION
+        echo "Updated VERSION file to: $NEW_VERSION"
+    
+    - name: Commit changes
+      run: |
+        NEW_VERSION="${{ steps.version.outputs.new-version }}"
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add VERSION
+        git commit -m "chore: auto-update version to $NEW_VERSION" || exit 0
+        git push origin main
