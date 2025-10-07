@@ -22,7 +22,7 @@ jobs:
         RUN_NUMBER="${{ github.run_number }}"
         NEW_VERSION="$DATE.$RUN_NUMBER"
         
-        echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "new-version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
         echo "Generated version: $NEW_VERSION"
     
     - name: Update VERSION file

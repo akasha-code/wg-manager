@@ -1,60 +1,101 @@
 # GitHub Actions for Version Management
 
-Este directorio contiene los workflows de GitHub Actions para gestión automática de versiones.
+**📚 Documentation**: [🇺🇸 Main README](../../README.md) | [🇪🇸 README Español](../../README.es.md)
 
-## Workflows Disponibles
+This directory contains GitHub Actions workflows for automatic version management.
 
-### 1. version-bump.yml (Recomendado)
-**Semantic Versioning Automático**
+## Available Workflows
 
-- **Trigger**: Push a main o merge de PR
-- **Funcionalidad**: 
-  - Analiza mensajes de commit para determinar el tipo de cambio
-  - Genera automáticamente nuevas versiones siguiendo semver
-  - Crea tags automáticamente
-  - Actualiza el archivo VERSION
-  - Crea releases en GitHub
+### 1. version-bump.yml 
+**Automatic Semantic Versioning (Advanced)**
 
-**Convenciones de commit:**
-- `feat: nueva funcionalidad` → incrementa MINOR
-- `fix: corrección` → incrementa PATCH  
-- `feat!: cambio breaking` → incrementa MAJOR
-- Cualquier commit con `BREAKING CHANGE` → incrementa MAJOR
+- **Trigger**: Push to main or PR merge
+- **Functionality**: 
+  - Analyzes commit messages to determine change type
+  - Automatically generates new versions following semver
+  - Creates tags automatically
+  - Updates VERSION file
+  - Creates GitHub releases
+- **Requirements**: Special write permissions
 
-### 2. simple-version.yml
-**Versionado Simple por Fecha**
+### 2. version-safe.yml (Recommended)
+**Safe Versioning with Limited Permissions**
 
-- **Trigger**: Push a main
-- **Funcionalidad**:
-  - Genera versiones basadas en fecha (YYYY.MM.BUILD_NUMBER)
-  - Actualiza automáticamente el archivo VERSION
-  - Más simple pero menos semántico
+- **Trigger**: Push to main or manual
+- **Functionality**:
+  - Creates tags automatically without modifying main
+  - Generates GitHub releases
+  - Allows manual triggers with bump type selection
+  - Works with standard GitHub permissions
+- **Advantages**: No permission issues, more reliable
 
-## Uso
+### 3. simple-version.yml
+**Simple Date-based Versioning**
 
-### Para usar semantic versioning (recomendado):
-1. Activa `version-bump.yml`
-2. Usa mensajes de commit descriptivos:
+- **Trigger**: Push to main
+- **Functionality**:
+  - Generates versions based on date (YYYY.MM.BUILD_NUMBER)
+  - Automatically updates VERSION file
+  - Simpler but less semantic
+
+## Recommended Usage
+
+### Option A: Version Safe (No permission issues)
+1. Use `version-safe.yml`
+2. Automatic push creates tags
+3. For manual control: use "Actions" → "Version Bump (Safe)" → "Run workflow"
+
+### Option B: Version Bump (If you have special permissions)
+1. Use `version-bump.yml`
+2. Commits with conventions:
    ```bash
-   git commit -m "feat: add new language support"
-   git commit -m "fix: resolve installation error"
-   git commit -m "feat!: change API structure"
+   git commit -m "feat: add new language support"      # → minor bump
+   git commit -m "fix: resolve installation error"     # → patch bump
+   git commit -m "feat!: change API structure"         # → major bump
    ```
 
-### Para usar versionado simple:
-1. Activa `simple-version.yml` 
-2. Cada push a main generará una nueva versión automáticamente
+## Commit Conventions (for version-bump.yml)
 
-## Configuración
+- `feat: new functionality` → increments MINOR
+- `fix: bug fix` → increments PATCH  
+- `feat!: breaking change` → increments MAJOR
+- Any commit with `BREAKING CHANGE` → increments MAJOR
 
-Los workflows están listos para usar. Solo necesitas:
-1. Activar el workflow que prefieras (o ambos si quieres probar)
-2. Hacer push a la rama main
-3. El workflow automáticamente:
-   - Actualizará el archivo VERSION
-   - Creará tags (en caso de semantic versioning)
-   - Hará commit de los cambios
+## Troubleshooting
 
-## Archivo VERSION
+### Error: "Permission denied" 
+- **Cause**: Protected main branch or insufficient permissions
+- **Solution**: Use `version-safe.yml` which only creates tags
 
-El archivo `VERSION` en la raíz del proyecto será mantenido automáticamente por los workflows. La función `get_version()` en `install.sh` lee este archivo para mostrar la versión correcta.
+### Error: "Resource not accessible"
+- **Cause**: Token without write permissions
+- **Solution**: Verify that workflow has `permissions: contents: write`
+
+### Warning: "set-output command is deprecated"
+- **Cause**: Use of deprecated syntax in GitHub Actions
+- **Solution**: ✅ **Fixed** - Updated to use `$GITHUB_OUTPUT`
+
+## Recent Updates
+
+- ✅ **October 2025**: Fixed deprecated command warnings
+- ✅ **Environment Files Support**: Migrated from `set-output` to `$GITHUB_OUTPUT`
+- ✅ **Future Compatibility**: Workflows prepared for modern GitHub Actions
+
+## Configuration
+
+The workflows are ready to use. To activate:
+
+1. **Safe method (recommended)**:
+   - Use `version-safe.yml`
+   - No special configuration required
+   - Works immediately
+
+2. **Advanced method**:
+   - Use `version-bump.yml` 
+   - May require adjusting branch protection rules
+
+## VERSION File
+
+- The `VERSION` file is maintained manually or by `simple-version.yml`
+- Tags are created automatically by `version-safe.yml` or `version-bump.yml`
+- The `get_version()` function in `install.sh` reads from the VERSION file

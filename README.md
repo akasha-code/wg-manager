@@ -1,5 +1,7 @@
 # WireGuard Manager (TUI)
 
+**🇺🇸 English | [🇪🇸 Español](README.es.md)**
+
 WireGuard Admin is an interactive TUI helper designed to simplify the day-to-day
 management of a self-hosted WireGuard VPN server. It wraps the `wg` tooling with
 an `fzf`-powered menu so you can configure the server, add peers and inspect
@@ -45,6 +47,13 @@ and prepares a `.env` file with a clean, professional installation experience.
 ```bash
 ./install.sh
 ```
+
+> **💡 Tip**: If you get a "Permission denied" error, make the script executable first:
+> ```bash
+> chmod +x install.sh
+> ./install.sh
+> ```
+> Alternatively, you can run it directly with: `bash install.sh`
 
 During installation you will:
 - Select your preferred language (English/Spanish)
@@ -108,12 +117,12 @@ code (`.png`) that can be scanned from mobile devices.
 - **Automated versioning**: GitHub Actions automatically manage version numbers
   based on commit messages, eliminating manual version management.
 
-## Credits y apoyo
+## Credits and Support
 
-WireGuard Admin es mantenido por Guido Nicolás Quadrini. Puedes encontrar un
-agradecimiento completo a todas las personas y proyectos que colaboraron en
+WireGuard Admin is maintained by Guido Nicolás Quadrini. You can find a
+complete acknowledgment of all the people and projects that collaborated in
 [CREDITS.md](CREDITS.md).
 
-¿Te resulta útil esta herramienta? Considera invitarme un café en
-[Buy Me a Coffee](https://buymeacoffee.com/matekraft) para apoyar su
-desarrollo continuo.
+Is this tool useful to you? Consider buying me a coffee on
+[Buy Me a Coffee](https://buymeacoffee.com/matekraft) to support its
+continued development.
