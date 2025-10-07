@@ -11,12 +11,36 @@ if [[ -f /etc/os-release ]]; then . /etc/os-release; DISTRO="$ID"; else DISTRO="
 pkgs=(fzf qrencode wireguard-tools)
 echo "📦 Installing required packages / Instalando paquetes requeridos: ${pkgs[*]}"
 case "$DISTRO" in
-  arch|manjaro) sudo pacman -S --needed "${pkgs[@]}" base-devel --noconfirm ;;
+  arch|manjaro) 
+    sudo pacman -S --needed "${pkgs[@]}" base-devel --noconfirm
+    # Ensure WireGuard kernel module is loaded on Arch
+    if ! lsmod | grep -q wireguard; then
+      echo "🔧 Loading WireGuard kernel module..."
+      sudo modprobe wireguard 2>/dev/null || echo "⚠️  Could not load WireGuard module - may need manual setup"
+    fi
+    ;;
   debian|ubuntu) sudo apt update && sudo apt install -y "${pkgs[@]}" ;;
   fedora) sudo dnf install -y "${pkgs[@]}" ;;
   opensuse*) sudo zypper install -y "${pkgs[@]}" ;;
   *) echo "⚠️  Unknown distro. Please install manually / Distribución desconocida. Instala manualmente: ${pkgs[*]}";;
 esac
+
+# Give time for PATH to update after package installation
+sleep 2
+
+# Verify critical packages are available
+echo "🔍 Verifying package installation..."
+missing_pkgs=()
+for cmd in fzf qrencode wg; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    missing_pkgs+=("$cmd")
+  fi
+done
+
+if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
+  echo "⚠️  Some packages may not be properly installed: ${missing_pkgs[*]}"
+  echo "   You may need to install them manually or update your PATH"
+fi
 
 # Language choice
 echo
@@ -86,7 +110,19 @@ echo
 if [[ "${WG_INSTALL_NO_WIZARD:-}" != "1" ]]; then
   echo
   echo "$INSTALL_LAUNCHING"
-  WG_HOME="$INSTALL_DIR" ./wg-manager --first-run
+  echo "🔧 Debug: About to run first-run setup..."
+  echo "   WG_HOME=$INSTALL_DIR"
+  echo "   Command: ./wg-manager --first-run"
+  echo
+  if WG_HOME="$INSTALL_DIR" ./wg-manager --first-run; then
+    echo "✅ First-run setup completed successfully"
+  else
+    exit_code=$?
+    echo "⚠️  First-run setup had issues (exit code: $exit_code)"
+    echo "   This is often due to missing dependencies or permissions"
+    echo "   You can run 'wg-manager --first-run' manually later"
+    echo "   Or try: cd '$INSTALL_DIR' && ./wg-manager --first-run"
+  fi
   echo
 fi
 echo "$INSTALL_COMPLETE"

@@ -170,8 +170,18 @@ fi
 source "$ENV_FILE"
 load_lang
 
-# Deps
-for cmd in wg qrencode fzf; do command -v "$cmd" >/dev/null 2>&1 || { echo "$APP_MISSING_COMMAND $cmd"; exit 1; }; done
+# Deps - be more lenient during first-run from installer
+if [[ "${1:-}" == "--first-run" ]]; then
+  # During installation, just warn about missing deps
+  for cmd in wg qrencode fzf; do 
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      echo "⚠️  Warning: $cmd not found in PATH - install may be incomplete"
+    fi
+  done
+else
+  # Normal operation - require all deps
+  for cmd in wg qrencode fzf; do command -v "$cmd" >/dev/null 2>&1 || { echo "$APP_MISSING_COMMAND $cmd"; exit 1; }; done
+fi
 
 # Paths
 BASE_DIR="${WG_BASE_DIR:-$WG_HOME/wireguard-files}"
