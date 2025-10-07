@@ -1,0 +1,29 @@
+# Testing environment (not part of the repository)
+docker-test/
+
+# Environment files
+.env
+
+# Generated files
+*.log
+.setup_done
+
+# WireGuard files
+*.conf
+*.key
+*.png
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.bak
