@@ -141,23 +141,15 @@ if sudo -v >/dev/null 2>&1; then
     echo "   ✅ Write permissions OK"
     
     # Now try the actual copy with detailed error output
-    echo "   📋 Copying file..."
-    copy_error=$(sudo cp "$INSTALL_DIR/wg-manager-executable" "/usr/local/bin/wg-manager" 2>&1)
-    copy_result=$?
-    
-    if [[ $copy_result -eq 0 ]]; then
-      echo "   ✅ Copy successful"
-      
-      # Try chmod with detailed error output
-      echo "   🔧 Setting permissions..."
-      chmod_error=$(sudo chmod +x "/usr/local/bin/wg-manager" 2>&1)
-      chmod_result=$?
-      
-      if [[ $chmod_result -eq 0 ]]; then
-        echo "   ✅ Permissions set successfully"
+    echo "   📋 Copying file and setting permissions..."
+    # Refresh sudo credentials and do both operations in one sudo call
+    if sudo -v 2>/dev/null; then
+      # Combine copy and chmod in single sudo operation to avoid timeout issues
+      if sudo bash -c "cp '$INSTALL_DIR/wg-manager-executable' '/usr/local/bin/wg-manager' && chmod +x '/usr/local/bin/wg-manager'" 2>/dev/null; then
+        echo "   ✅ Copy and permissions successful"
         echo "$INSTALL_CMD_INSTALLED"
       else
-        echo "   ❌ chmod failed: $chmod_error"
+        echo "   ❌ Copy or chmod failed"
         echo "   🔄 Falling back to local installation..."
         sudo rm -f "/usr/local/bin/wg-manager" 2>/dev/null
         mkdir -p "$HOME/.local/bin"
@@ -166,8 +158,7 @@ if sudo -v >/dev/null 2>&1; then
         echo "$INSTALL_CMD_LOCAL $HOME/.local/bin/wg-manager"
       fi
     else
-      echo "   ❌ Copy failed: $copy_error"
-      echo "   🔄 Falling back to local installation..."
+      echo "   ❌ sudo credentials expired, installing locally instead..."
       mkdir -p "$HOME/.local/bin"
       cp "$INSTALL_DIR/wg-manager-executable" "$HOME/.local/bin/wg-manager"
       chmod +x "$HOME/.local/bin/wg-manager"
