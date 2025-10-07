@@ -58,7 +58,7 @@ If you prefer a manual setup:
 
 1. Copy `.env.example` to `.env` and edit the values to match your server.
 2. Ensure the required commands (`wg`, `qrencode`, `fzf`) are available.
-3. Export `WG_HOME` to the project directory and run `./wg-fzf.sh`.
+3. Export `WG_HOME` to the project directory and run `./wg-manager`.
 4. Optionally symlink the script somewhere in your `$PATH` as `wg-manager`.
 
 ## Usage

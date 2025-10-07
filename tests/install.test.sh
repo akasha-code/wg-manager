@@ -51,7 +51,7 @@ WRAPPER="$HOME/.local/bin/wg-manager"
 [[ -f "$WRAPPER" ]] || fail "$case_name (wrapper not created)"
 [[ -x "$WRAPPER" ]] || fail "$case_name (wrapper not executable)"
 grep -q "WG_HOME=\"$ROOT_DIR\"" "$WRAPPER" || fail "$case_name (wrapper WG_HOME path)"
-grep -q "wg-fzf.sh" "$WRAPPER" || fail "$case_name (wrapper points to wg-fzf.sh)"
+grep -q "wg-manager" "$WRAPPER" || fail "$case_name (wrapper points to wg-manager)"
 
 pass "$case_name"
 echo "All install tests passed."

@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Determine home dir for app
+WG_HOME="${WG_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+ENV_FILE="$WG_HOME/.env"
+SETUP_FLAG="$WG_HOME/.setup_done"
+LANG_DIR="$WG_HOME/languages"
+DONATE_URL="https://buymeacoffee.com/matekraft"
+CFG_DIR="$HOME/.config/wg-admin"
+mkdir -p "$CFG_DIR"
+LOG_FILE="$CFG_DIR/setup.log"
+
+# Load modules
+for module in "$WG_HOME/lib"/*.sh; do
+    if [[ -f "$module" ]]; then
+        source "$module"
+    fi
+done
+
+# Application initialization
+init_app() {
+    # Load language settings
+    load_lang
+    
+    # Initialize required directories
+    mkdir -p "${WG_BASE_DIR:-$HOME/wireguard-files}"
+    
+    # First run setup
+    if [[ ! -f "$SETUP_FLAG" && ! -f "$ENV_FILE" ]]; then
+        echo "🎉 Welcome to WireGuard Manager!"
+        echo "First-time setup needed..."
+        first_run_menu
+    elif [[ ! -f "$ENV_FILE" ]]; then
+        create_defaults
+    fi
+}
+
+# CLI subcommands
+if [[ $# -gt 0 ]]; then
+    case "$1" in
+        list) list_peers ; exit 0 ;;
+        status) show_status ; exit 0 ;;
+        add) shift; sudo "$WG_HOME/create-client.sh" "$@" ; exit 0 ;;
+        --wizard) wizard_verbose; touch "$SETUP_FLAG"; exit 0 ;;
+        --first-run) first_run_menu; exit 0 ;;
+        --peer-menu) 
+            shift
+            if [[ $# -gt 0 ]]; then
+                init_app
+                peer_menu_loop "$1"
+                exit 0
+            else
+                echo "❌ Peer name required for --peer-menu"
+                exit 1
+            fi
+            ;;
+        --help)
+            echo "WireGuard Manager - Easy WireGuard peer management"
+            echo ""
+            echo "Usage: $0 [COMMAND] [OPTIONS]"
+            echo ""
+            echo "Commands:"
+            echo "  list                    List all peers"
+            echo "  status                  Show VPN status"
+            echo "  add [PEER_NAME]        Create new peer"
+            echo "  --peer-menu PEER_NAME  Open peer menu"
+            echo "  --wizard               Run configuration wizard"
+            echo "  --first-run            Run first-time setup"
+            echo "  --help                 Show this help"
+            echo ""
+            echo "Without arguments, opens the interactive menu."
+            exit 0
+            ;;
+    esac
+fi
+
+# Initialize application
+init_app
+
+# Main menu
+while true; do
+    clear
+    choice=$(printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
+             "${MENU_VIEW_PEERS:-View peers}" "${MENU_CREATE_NEW:-Create new}" "${MENU_GENERAL_CONFIG:-General config}" "🧰 Tools" \
+             "${MENU_SETTINGS:-Settings}" "${MENU_RESTART_SERVICE:-Restart service}" "${MENU_STATUS:-VPN Status}" "${MENU_CREDITS:-Credits}" | \
+             fzf --height=20 --reverse --prompt="${PROMPT_MANAGER:-WireGuard Manager > }")
+    case "$choice" in
+        *View*|*Ver*) 
+            peers=$(list_peers)
+            if [[ -z "$peers" ]]; then
+                echo "${NO_PEERS:-No peers}"
+                footer
+                pause
+                continue
+            fi
+            peer=$(echo "$peers" | fzf --height=20 --reverse --prompt="${PROMPT_SELECT_PEER:-Select peer > }")
+            [[ -n "$peer" ]] && peer_more "$peer"
+            ;;
+        *Create*|*Crear*) sudo "$WG_HOME/create-client.sh" ;;
+        *General*) view_general ;;
+        "🧰 Tools") tools_menu ;;
+        *Settings*|*Configuración*) settings_menu ;;
+        *Restart*|*Reiniciar*) restart_wg ;;
+        *Status*|*Estado*) show_status ;;
+        *Credits*|*Créditos*)
+            clear
+            if [[ -f "$WG_HOME/CREDITS.md" ]]; then
+                if command -v glow >/dev/null 2>&1; then 
+                    glow "$WG_HOME/CREDITS.md"
+                else 
+                    cat "$WG_HOME/CREDITS.md"
+                fi
+            else
+                echo "Credits file missing."
+            fi
+            footer
+            pause
+            ;;
+        *) clear; exit 0 ;;
+    esac
+done

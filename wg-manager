@@ -10,45 +10,43 @@ DONATE_URL="https://buymeacoffee.com/matekraft"
 CFG_DIR="$HOME/.config/wg-admin"
 mkdir -p "$CFG_DIR"
 LOG_FILE="$CFG_DIR/setup.log"
-log() { printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"; }
 
-# Utilities
+# Basic utilities
+log() { printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"; }
 ask() { local p="$1"; local d="$2"; read -rp "$p" REPLY; echo "${REPLY:-$d}"; }
 valid_ip(){ [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; }
-private_ip(){ [[ "$1" =~ ^10\. || "$1" =~ ^192\.168\. || "$1" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\. ]]; }
+private_ip(){ [[ "$1" =~ ^10\. || "$1" =~ ^192\.168\. ]]; }
 valid_domain(){ [[ "$1" =~ ^[a-zA-Z0-9.-]+$ && "$1" != *".."* && "$1" != "." ]]; }
 detect_if(){ ip link show 2>/dev/null | awk -F': ' '/wg[0-9]/{print $2}' | head -n1; }
 
-# Flows -------------------------------------------------------------------
-create_defaults() {
-  if [[ -f "$WG_HOME/.env.example" ]]; then
-    cp "$WG_HOME/.env.example" "$ENV_FILE"
-  else
-    cat > "$ENV_FILE" <<EOF
-WG_BASE_DIR="$HOME/wireguard-files"
-WG_SERVER_DOMAIN="vpn.example.com"
-WG_SERVER_PORT=51820
-WG_INTERFACE="wg0"
-WG_BASE_NETWORK="10.0.0"
-WG_DEFAULT_DNS="1.1.1.1"
-WG_DEFAULT_KEEPALIVE=25
-WG_THEME="dark"
-WG_LANG="en"
-EOF
-  fi
-  log "ENV created with defaults"
+# Application initialization
+init_app() {
+    # Load language settings
+    load_lang
+    
+    # Initialize required directories
+    mkdir -p "${WG_BASE_DIR:-$HOME/wireguard-files}"
+    
+    # First run setup
+    if [[ ! -f "$SETUP_FLAG" && ! -f "$ENV_FILE" ]]; then
+        echo "$APP_WELCOME"
+        echo "$APP_FIRST_SETUP"
+        first_run_menu
+    elif [[ ! -f "$ENV_FILE" ]]; then
+        create_defaults
+    fi
 }
 
 configure_step_by_step() {
-  echo "⚙️  Configure each setting (press Enter to keep defaults)"
+  echo "$WIZARD_STEP_BY_STEP"
   local domain port iface base dns ka
-  domain=$(ask "🌍 Domain or public IP [vpn.example.com]: " "vpn.example.com")
-  port=$(ask "⚙️  UDP port [51820]: " "51820")
+  domain=$(ask "$WIZARD_DOMAIN_PROMPT" "vpn.example.com")
+  port=$(ask "$WIZARD_PORT_PROMPT" "51820")
   local di; di="$(detect_if)"; [[ -z "$di" ]] && di="wg0"
-  iface=$(ask "🧩 Interface [${di}]: " "${di}")
-  base=$(ask "🕸️  Base private network (e.g., 10.0.0): " "10.0.0")
-  dns=$(ask "📡 DNS for clients [1.1.1.1]: " "1.1.1.1")
-  ka=$(ask "🔁 Keepalive seconds [25]: " "25")
+  iface=$(ask "$WIZARD_INTERFACE_PROMPT [${di}]: " "${di}")
+  base=$(ask "$WIZARD_NETWORK_PROMPT" "10.0.0")
+  dns=$(ask "$WIZARD_DNS_PROMPT" "1.1.1.1")
+  ka=$(ask "$WIZARD_KEEPALIVE_PROMPT" "25")
   cat > "$ENV_FILE" <<EOF
 WG_BASE_DIR="$HOME/wireguard-files"
 WG_SERVER_DOMAIN="$domain"
@@ -65,42 +63,42 @@ EOF
 
 wizard_verbose() {
   clear
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "✨ WireGuard Admin — Guided Wizard"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "I'll explain each option and propose safe defaults."
+  echo "$WIZARD_HEADER"
+  echo "$WIZARD_TITLE"
+  echo "$WIZARD_HEADER"
+  echo "$WIZARD_EXPLANATION"
   echo
 
   # Step 1 - Domain/IP (verbose text, bilingual kept minimal here)
-  cat <<'EOT'
-🌍 Step 1/6 — Domain or public IP
-- If you have a domain: add an A record (vpn.mydomain.com → your public IP).
-- No domain? Use free DDNS: https://www.duckdns.org/ or https://www.noip.com/
-- Public IP check: https://ifconfig.me / https://whatismyipaddress.com/
-- Local-only: use a private IP like 192.168.1.10
+  cat <<EOT
+$WIZARD_STEP_1_TITLE
+$WIZARD_STEP_1_DOMAIN_INFO
+$WIZARD_STEP_1_NO_DOMAIN
+$WIZARD_STEP_1_PUBLIC_IP
+$WIZARD_STEP_1_LOCAL_ONLY
 EOT
-  local domain; domain=$(ask "Enter domain or IP [vpn.example.com]: " "vpn.example.com")
+  local domain; domain=$(ask "$WIZARD_DOMAIN_INPUT" "vpn.example.com")
   log "WZ_DOMAIN=$domain"
 
   echo
-  local port; port=$(ask "⚙️  Step 2/6 — UDP port [51820]: " "51820")
+  local port; port=$(ask "$WIZARD_PORT_INPUT" "51820")
   log "WZ_PORT=$port"
 
   echo
   local di; di="$(detect_if)"; [[ -z "$di" ]] && di="wg0"
-  local iface; iface=$(ask "🧩 Step 3/6 — Interface [${di}]: " "${di}")
+  local iface; iface=$(ask "$WIZARD_INTERFACE_INPUT [${di}]: " "${di}")
   log "WZ_IFACE=$iface"
 
   echo
-  local base; base=$(ask "🕸️  Step 4/6 — Base network (e.g., 10.0.0): " "10.0.0")
+  local base; base=$(ask "$WIZARD_NETWORK_INPUT" "10.0.0")
   log "WZ_BASE=$base"
 
   echo
-  local dns; dns=$(ask "📡 Step 5/6 — DNS for clients [1.1.1.1]: " "1.1.1.1")
+  local dns; dns=$(ask "$WIZARD_DNS_INPUT" "1.1.1.1")
   log "WZ_DNS=$dns"
 
   echo
-  local ka; ka=$(ask "🔁 Step 6/6 — Keepalive seconds [25]: " "25")
+  local ka; ka=$(ask "$WIZARD_KEEPALIVE_INPUT" "25")
   log "WZ_KA=$ka"
 
   cat > "$ENV_FILE" <<EOF
@@ -115,28 +113,28 @@ WG_THEME="dark"
 WG_LANG="${WG_LANG:-en}"
 EOF
   log "ENV written via verbose wizard"
-  echo "✅ Saved configuration to $ENV_FILE"
+  echo "$WIZARD_CONFIG_SAVED"
 }
 
 first_run_menu() {
   # Show bilingual explanatory message and options
-  echo "───────────────────────────────────────"
-  echo "No existing configuration (.env) found."
-  echo "You have several options to begin:"
-  echo "  1) Accept safe defaults and open the app"
-  echo "  2) Configure setting-by-setting (simple prompts)"
-  echo "  3) Run the exhaustive guided wizard (educational)"
-  echo "  4) Cancel now (you can run later: wg-manager --wizard)"
-  read -rp "Choose [1-4]: " choice
+  echo "$FIRST_RUN_MENU_SEPARATOR"
+  echo "$FIRST_RUN_MENU_NO_CONFIG"
+  echo "$FIRST_RUN_MENU_OPTIONS"
+  echo "$FIRST_RUN_MENU_OPTION1"
+  echo "$FIRST_RUN_MENU_OPTION2"
+  echo "$FIRST_RUN_MENU_OPTION3"
+  echo "$FIRST_RUN_MENU_OPTION4"
+  read -rp "$FIRST_RUN_MENU_CHOOSE" choice
   case "${choice:-1}" in
     1) create_defaults ;;
     2) configure_step_by_step ;;
     3) wizard_verbose ;;
-    4) echo "Cancelled. Run 'wg-manager --wizard' later."; exit 0 ;;
+    4) echo "$FIRST_RUN_CANCELLED"; exit 0 ;;
     *) create_defaults ;;
   esac
   touch "$SETUP_FLAG"
-  echo "Setup finished. You can adjust settings later from Settings → Edit (.env)"
+  echo "$FIRST_RUN_FINISHED"
 }
 
 # Load language (after ENV exists)
@@ -158,7 +156,7 @@ if [[ "${1:-}" == "--first-run" ]]; then
   if [[ ! -f "$ENV_FILE" ]]; then
     first_run_menu
   else
-    echo "Found existing .env; skipping first-run menu."
+    echo "$SETUP_EXISTING_ENV"
   fi
   exit 0
 fi
@@ -173,7 +171,7 @@ source "$ENV_FILE"
 load_lang
 
 # Deps
-for cmd in wg qrencode fzf; do command -v "$cmd" >/dev/null 2>&1 || { echo "❌ Missing $cmd"; exit 1; }; done
+for cmd in wg qrencode fzf; do command -v "$cmd" >/dev/null 2>&1 || { echo "$APP_MISSING_COMMAND $cmd"; exit 1; }; done
 
 # Paths
 BASE_DIR="${WG_BASE_DIR:-$WG_HOME/wireguard-files}"
@@ -203,7 +201,7 @@ validate_config() {
       echo "${VALID_CONFIG_FAIL}"
     fi
   else
-    echo "wg-quick not found."
+    echo "$WG_QUICK_NOT_FOUND"
   fi
   pause
 }
@@ -238,8 +236,8 @@ delete_peer() {
   return 0
 }
 rename_peer() {
-  local old="$1"; read -rp "New name for '$old': " new; [[ -z "$new" ]] && { echo "Cancelled."; pause; return 1; }
-  [[ -d "$BASE_DIR/$new" ]] && { echo "Name exists."; pause; return 1; }
+  local old="$1"; read -rp "$PEER_RENAME_PROMPT '$old': " new; [[ -z "$new" ]] && { echo "$PEER_RENAME_CANCELLED"; pause; return 1; }
+  [[ -d "$BASE_DIR/$new" ]] && { echo "$PEER_RENAME_EXISTS"; pause; return 1; }
   sudo mv "$BASE_DIR/$old" "$BASE_DIR/$new"
   sudo mv "$BASE_DIR/$new/$old.conf" "$BASE_DIR/$new/$new.conf"
   sudo sed -i "s/# --- peer $old ---/# --- peer $new ---/" "$WG_CONF"
@@ -269,7 +267,7 @@ peer_menu_loop() {
         ;;
       *Delete*|*Eliminar*) 
         if delete_peer "$peer"; then
-          echo "Peer deleted. Returning to main menu..."
+          echo "$PEER_DELETED_RETURNING"
           sleep 2
           return 0
         fi
@@ -315,7 +313,7 @@ settings_menu() {
   case "$action" in
     *Edit*) "$EDITOR" "$ENV_FILE" ;;
     *Change*|*Cambiar*)
-        sel=$(printf "en\nes" | fzf --height=6 --reverse --prompt="Language / Idioma > ")
+        sel=$(printf "en\nes" | fzf --height=6 --reverse --prompt="$LANGUAGE_PROMPT")
         [[ -n "$sel" ]] && (grep -q '^WG_LANG=' "$ENV_FILE" && sed -i "s/^WG_LANG=.*/WG_LANG=\"$sel\"/" "$ENV_FILE" || echo "WG_LANG=\"$sel\"" >> "$ENV_FILE")
         ;;
     *Restore*|*Restaurar*) cp "$WG_HOME/.env.example" "$ENV_FILE";;
@@ -336,15 +334,15 @@ show_status() {
 }
 
 tools_menu() {
-  action=$(printf "💾 Backup (all)\n📦 Export selected peer\n🧪 Validate config\n⬅️ Back" | \
+  action=$(printf "$TOOLS_BACKUP_ALL\n$TOOLS_EXPORT_PEER\n$TOOLS_VALIDATE_CONFIG\n$TOOLS_BACK" | \
            fzf --height=12 --reverse --prompt="${PROMPT_ACTION:-Action > }")
   case "$action" in
-    "💾 Backup (all)") backup_all ;;
-    "📦 Export selected peer")
+    "*Backup*"|"*Respaldar*") backup_all ;;
+    "*Export*"|"*Exportar*")
         peer=$(list_peers | fzf --height=20 --reverse --prompt="${PROMPT_SELECT_PEER:-Select peer > }")
         [[ -n "$peer" ]] && export_peer "$peer"
         ;;
-    "🧪 Validate config") validate_config ;;
+    "*Validate*"|"*Validar*") validate_config ;;
   esac
 }
 
@@ -362,9 +360,26 @@ if [[ $# -gt 0 ]]; then
         peer_menu_loop "$1"
         exit 0
       else
-        echo "❌ Peer name required for --peer-menu"
+        echo "$HELP_PEER_NAME_REQUIRED"
         exit 1
       fi
+      ;;
+    --help)
+      echo "$HELP_TITLE"
+      echo ""
+      echo "$HELP_USAGE $0 [COMMAND] [OPTIONS]"
+      echo ""
+      echo "$HELP_COMMANDS"
+      echo "  list                    $HELP_LIST"
+      echo "  status                  $HELP_STATUS"
+      echo "  add [PEER_NAME]        $HELP_ADD"
+      echo "  --peer-menu PEER_NAME  $HELP_PEER_MENU"
+      echo "  --wizard               $HELP_WIZARD"
+      echo "  --first-run            $HELP_FIRST_RUN"
+      echo "  --help                 $HELP_HELP"
+      echo ""
+      echo "$HELP_WITHOUT_ARGS"
+      exit 0
       ;;
   esac
 fi
@@ -373,14 +388,14 @@ fi
 while true; do
   clear
   choice=$(printf "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
-           "${MENU_VIEW_PEERS:-View peers}" "${MENU_CREATE_NEW:-Create new}" "${MENU_GENERAL_CONFIG:-General config}" "🧰 Tools" \
+           "${MENU_VIEW_PEERS:-View peers}" "${MENU_CREATE_NEW:-Create new}" "${MENU_GENERAL_CONFIG:-General config}" "${MENU_TOOLS:-Tools}" \
            "${MENU_SETTINGS:-Settings}" "${MENU_RESTART_SERVICE:-Restart service}" "${MENU_STATUS:-VPN Status}" "${MENU_CREDITS:-Credits}" | \
            fzf --height=20 --reverse --prompt="${PROMPT_MANAGER:-WireGuard Manager > }")
   case "$choice" in
     *View*|*Ver*) peers=$(list_peers); [[ -z "$peers" ]] && { echo "${NO_PEERS:-No peers}"; footer; pause; continue; }; peer=$(echo "$peers" | fzf --height=20 --reverse --prompt="${PROMPT_SELECT_PEER:-Select peer > }"); [[ -n "$peer" ]] && peer_more "$peer" ;;
     *Create*|*Crear*) sudo "$WG_HOME/create-client.sh" ;;
     *General*) view_general ;;
-    "🧰 Tools") tools_menu ;;
+    *Tools*|*Herramientas*) tools_menu ;;
     *Settings*|*Configuración*) settings_menu ;;
     *Restart*|*Reiniciar*) restart_wg ;;
     *Status*|*Estado*) show_status ;;
@@ -389,7 +404,7 @@ while true; do
       if [[ -f "$WG_HOME/CREDITS.md" ]]; then
         if command -v glow >/dev/null 2>&1; then glow "$WG_HOME/CREDITS.md"; else cat "$WG_HOME/CREDITS.md"; fi
       else
-        echo "Credits file missing."
+        echo "$CREDITS_FILE_MISSING"
       fi
       footer; pause
       ;;

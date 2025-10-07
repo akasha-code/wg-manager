@@ -46,43 +46,47 @@ else
   echo "$INSTALL_ENV_EXISTS"
 fi
 
-# Install wrapper to /usr/local/bin
+# Install to PATH
 INSTALL_DIR="$(pwd)"
-WRAPPER="/usr/local/bin/wg-manager"
-WRAP_CONTENT="#!/usr/bin/env bash
-export WG_HOME=\"${INSTALL_DIR}\"
-exec \"${INSTALL_DIR}/wg-fzf.sh\" \"\$@\"
-"
+
+# Prepare the executable script with embedded path
+cat > "$INSTALL_DIR/wg-manager-executable" <<EOF
+#!/usr/bin/env bash
+export WG_HOME="$INSTALL_DIR"
+exec "$INSTALL_DIR/wg-manager" "\$@"
+EOF
+chmod +x "$INSTALL_DIR/wg-manager-executable"
 
 # Try to install system-wide first, fallback to user directory
 if sudo -v >/dev/null 2>&1; then
   # Ensure /usr/local/bin exists
   sudo mkdir -p /usr/local/bin 2>/dev/null || true
   
-  if echo "$WRAP_CONTENT" | sudo tee "$WRAPPER" >/dev/null 2>&1 && sudo chmod +x "$WRAPPER" 2>/dev/null; then
+  if sudo cp "$INSTALL_DIR/wg-manager-executable" "/usr/local/bin/wg-manager" 2>/dev/null && sudo chmod +x "/usr/local/bin/wg-manager" 2>/dev/null; then
     echo "$INSTALL_CMD_INSTALLED"
   else
     echo "⚠️  Failed to install system-wide, installing locally..."
     mkdir -p "$HOME/.local/bin"
-    WRAPPER="$HOME/.local/bin/wg-manager"
-    echo "$WRAP_CONTENT" > "$WRAPPER"
-    chmod +x "$WRAPPER"
-    echo "$INSTALL_CMD_LOCAL $WRAPPER"
+    cp "$INSTALL_DIR/wg-manager-executable" "$HOME/.local/bin/wg-manager"
+    chmod +x "$HOME/.local/bin/wg-manager"
+    echo "$INSTALL_CMD_LOCAL $HOME/.local/bin/wg-manager"
   fi
 else
   # No sudo, install locally
   mkdir -p "$HOME/.local/bin"
-  WRAPPER="$HOME/.local/bin/wg-manager"
-  echo "$WRAP_CONTENT" > "$WRAPPER"
-  chmod +x "$WRAPPER"
-  echo "$INSTALL_CMD_LOCAL $WRAPPER"
+  cp "$INSTALL_DIR/wg-manager-executable" "$HOME/.local/bin/wg-manager"
+  chmod +x "$HOME/.local/bin/wg-manager"
+  echo "$INSTALL_CMD_LOCAL $HOME/.local/bin/wg-manager"
 fi
+
+# Clean up temporary file
+rm -f "$INSTALL_DIR/wg-manager-executable"
 
 echo
 if [[ "${WG_INSTALL_NO_WIZARD:-}" != "1" ]]; then
   echo
   echo "$INSTALL_LAUNCHING"
-  WG_HOME="$INSTALL_DIR" ./wg-fzf.sh --first-run
+  WG_HOME="$INSTALL_DIR" ./wg-manager --first-run
   echo
 fi
 echo "$INSTALL_COMPLETE"

@@ -85,5 +85,5 @@ if [[ "${WG_RETURN_TO_PEER_MENU:-1}" == "1" ]]; then
   echo "📋 Opening peer menu for '$DEVNAME'..."
   sleep 1
   export WG_PEER_NAME="$DEVNAME"
-  exec "$WG_HOME/wg-fzf.sh" --peer-menu "$DEVNAME"
+  exec "$WG_HOME/wg-manager" --peer-menu "$DEVNAME"
 fi
