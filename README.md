@@ -84,7 +84,12 @@ Generated client artefacts are stored under `~/wireguard-files/<peer-name>/` by
 default. Each directory contains the client configuration (`.conf`) and a QR
 code (`.png`) that can be scanned from mobile devices.
 
-## Credits
+## Credits y apoyo
 
-This project is maintained by Guido Nicolás Quadrini. See [CREDITS.md](CREDITS.md)
-for full acknowledgements.
+WireGuard Admin es mantenido por Guido Nicolás Quadrini. Puedes encontrar un
+agradecimiento completo a todas las personas y proyectos que colaboraron en
+[CREDITS.md](CREDITS.md).
+
+¿Te resulta útil esta herramienta? Considera invitarme un café en
+[Buy Me a Coffee](https://buymeacoffee.com/matekraft) para apoyar su
+desarrollo continuo.
