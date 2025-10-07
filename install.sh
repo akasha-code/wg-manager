@@ -37,7 +37,7 @@ case "$DISTRO" in
     sudo pacman -S --needed "${pkgs[@]}" base-devel --noconfirm
     # Ensure WireGuard kernel module is loaded on Arch
     if ! lsmod | grep -q wireguard; then
-      echo "$INSTALL_WRAPPER_CREATING"
+      echo "🔧 Loading WireGuard kernel module..."
       sudo modprobe wireguard 2>/dev/null || echo "⚠️  Could not load WireGuard module - may need manual setup"
     fi
     ;;
@@ -87,9 +87,9 @@ fi
 if [[ ! -f .env ]]; then
   cp .env.example .env
   sed -i "s/^WG_LANG=.*/WG_LANG=\"$WG_LANG\"/" .env
-  echo "$INSTALL_ENV_CREATED"
+  echo "✅ Environment file created / Archivo de entorno creado"
 else
-  echo "$INSTALL_ENV_EXISTS"
+  echo "✅ Environment file already exists / El archivo de entorno ya existe"
 fi
 
 # Install to PATH
