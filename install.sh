@@ -74,22 +74,41 @@ fi
 INSTALL_DIR="$(pwd)"
 
 # Prepare the executable script with embedded path
+echo "🔧 Creating executable wrapper..."
 cat > "$INSTALL_DIR/wg-manager-executable" <<EOF
 #!/usr/bin/env bash
 export WG_HOME="$INSTALL_DIR"
 exec "$INSTALL_DIR/wg-manager" "\$@"
 EOF
+
+# Verify the file was created
+if [[ ! -f "$INSTALL_DIR/wg-manager-executable" ]]; then
+  echo "❌ Failed to create wg-manager-executable wrapper"
+  echo "   Check write permissions in: $INSTALL_DIR"
+  exit 1
+fi
+
 chmod +x "$INSTALL_DIR/wg-manager-executable"
+
+# Verify permissions were set
+if [[ ! -x "$INSTALL_DIR/wg-manager-executable" ]]; then
+  echo "❌ Failed to set execute permissions on wrapper"
+  exit 1
+fi
+
+echo "✅ Wrapper created successfully"
 
 # Try to install system-wide first, fallback to user directory
 if sudo -v >/dev/null 2>&1; then
   # Ensure /usr/local/bin exists
   sudo mkdir -p /usr/local/bin 2>/dev/null || true
   
-  if sudo cp "$INSTALL_DIR/wg-manager-executable" "/usr/local/bin/wg-manager" 2>/dev/null && sudo chmod +x "/usr/local/bin/wg-manager" 2>/dev/null; then
+  echo "🔧 Attempting system-wide installation..."
+  if [[ -f "$INSTALL_DIR/wg-manager-executable" ]] && sudo cp "$INSTALL_DIR/wg-manager-executable" "/usr/local/bin/wg-manager" 2>/dev/null && sudo chmod +x "/usr/local/bin/wg-manager" 2>/dev/null; then
     echo "$INSTALL_CMD_INSTALLED"
   else
     echo "⚠️  Failed to install system-wide, installing locally..."
+    echo "   Reason: Could not copy to /usr/local/bin (permissions, filesystem, or file missing)"
     mkdir -p "$HOME/.local/bin"
     cp "$INSTALL_DIR/wg-manager-executable" "$HOME/.local/bin/wg-manager"
     chmod +x "$HOME/.local/bin/wg-manager"
@@ -97,6 +116,7 @@ if sudo -v >/dev/null 2>&1; then
   fi
 else
   # No sudo, install locally
+  echo "🔧 No sudo available, installing locally..."
   mkdir -p "$HOME/.local/bin"
   cp "$INSTALL_DIR/wg-manager-executable" "$HOME/.local/bin/wg-manager"
   chmod +x "$HOME/.local/bin/wg-manager"
@@ -112,16 +132,20 @@ if [[ "${WG_INSTALL_NO_WIZARD:-}" != "1" ]]; then
   echo "$INSTALL_LAUNCHING"
   echo "🔧 Debug: About to run first-run setup..."
   echo "   WG_HOME=$INSTALL_DIR"
-  echo "   Command: ./wg-manager --first-run"
+  echo "   Command: bash ./wg-manager --first-run"
+  
+  # Ensure wg-manager has execute permissions
+  chmod +x ./wg-manager
+  
   echo
-  if WG_HOME="$INSTALL_DIR" ./wg-manager --first-run; then
+  if WG_HOME="$INSTALL_DIR" bash ./wg-manager --first-run; then
     echo "✅ First-run setup completed successfully"
   else
     exit_code=$?
     echo "⚠️  First-run setup had issues (exit code: $exit_code)"
-    echo "   This is often due to missing dependencies or permissions"
-    echo "   You can run 'wg-manager --first-run' manually later"
-    echo "   Or try: cd '$INSTALL_DIR' && ./wg-manager --first-run"
+    echo "   Installation completed, but first-run configuration needs to be done manually"
+    echo "   To complete setup, run: wg-manager --first-run"
+    echo "   Or if that doesn't work: cd '$INSTALL_DIR' && bash ./wg-manager --first-run"
   fi
   echo
 fi
