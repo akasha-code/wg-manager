@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cmd=${1:-}
+case "$cmd" in
+  genkey)
+    # Output deterministic private key
+    printf "privkey123\n"
+    ;;
+  pubkey)
+    # Read from stdin and derive a fake pubkey
+    in=$(cat)
+    printf "pub_of_%s\n" "$in"
+    ;;
+  *)
+    echo "wg-mock: unsupported command: $*" >&2
+    exit 0
+    ;;
+esac
+

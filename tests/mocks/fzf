@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Simple fzf mock: prints a preselected choice.
+# If FZF_CHOICE is set, use it; else choose "Full".
+
+echo "${FZF_CHOICE:-Full}"
+
